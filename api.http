@@ -1,0 +1,312 @@
+### Algo Backtest API — HTTP Request Examples
+### Use with VS Code REST Client, Insomnia, or Postman
+
+@baseUrl = http://localhost:3000
+@contentType = Content-Type: application/json
+
+# ════════════════════════════════════════════════════════════
+# HEALTH
+# ════════════════════════════════════════════════════════════
+
+### Health check
+GET {{baseUrl}}/health
+
+### API index
+GET {{baseUrl}}/api
+
+
+# ════════════════════════════════════════════════════════════
+# MARKET DATA
+# ════════════════════════════════════════════════════════════
+
+### Available trading days
+GET {{baseUrl}}/api/market/available-days?instrument=NIFTY&year=2024
+
+### Single candle (raw)
+GET {{baseUrl}}/api/market/candle?instrument=NIFTY&datetime=2024-01-01T09:16:00
+
+### Single candle (raw + processed)
+GET {{baseUrl}}/api/market/candle?instrument=NIFTY&datetime=2024-01-01T09:16:00&include=processed
+
+### Option chain at a candle
+GET {{baseUrl}}/api/market/chain?instrument=NIFTY&datetime=2024-01-01T09:16:00
+
+### Option chain — specific expiry only
+GET {{baseUrl}}/api/market/chain?instrument=NIFTY&datetime=2024-01-01T09:16:00&expiry=2024-01-04
+
+### Expiry dates available on a date
+GET {{baseUrl}}/api/market/expiries?instrument=NIFTY&date=2024-01-01
+
+### Batch candles (max 31 days)
+GET {{baseUrl}}/api/market/candles?instrument=NIFTY&startDate=2024-01-01&endDate=2024-01-05&entryTime=09:15&exitTime=15:30
+
+### Processed candles
+GET {{baseUrl}}/api/market/candles?instrument=NIFTY&startDate=2024-01-01&endDate=2024-01-02&processed=true
+
+### Collection stats
+GET {{baseUrl}}/api/market/stats?instrument=NIFTY&year=2024
+
+### Available instruments
+GET {{baseUrl}}/api/market/instruments
+
+
+# ════════════════════════════════════════════════════════════
+# STRATEGY TEMPLATES
+# ════════════════════════════════════════════════════════════
+
+### List all templates
+GET {{baseUrl}}/api/strategy/templates
+
+### Get specific template
+GET {{baseUrl}}/api/strategy/templates/iron_condor
+
+### Build config from template
+POST {{baseUrl}}/api/strategy/from-template
+{{contentType}}
+
+{
+  "templateKey": "short_straddle",
+  "instrument": "NIFTY",
+  "startDate": "2024-01-01",
+  "endDate": "2024-03-31",
+  "capital": 500000,
+  "lotSize": 50,
+  "entryTime": "09:30",
+  "exitTime": "15:15"
+}
+
+### Calculate margin
+POST {{baseUrl}}/api/strategy/calculate-margin
+{{contentType}}
+
+{
+  "CalculateForExpiryDay": false,
+  "IndexPrices": { "NIFTY": 21726 },
+  "ListOfPosition": [
+    { "Ticker": "NIFTY", "Strike": 21700, "InstrumentType": "CE", "NetQty": -1, "Expiry": "2024-01-04", "Premium": 100 },
+    { "Ticker": "NIFTY", "Strike": 21700, "InstrumentType": "PE", "NetQty": -1, "Expiry": "2024-01-04", "Premium": 95 }
+  ]
+}
+
+
+# ════════════════════════════════════════════════════════════
+# BACKTESTS
+# ════════════════════════════════════════════════════════════
+
+### Create backtest — Short Straddle, time-based only
+POST {{baseUrl}}/api/backtests
+{{contentType}}
+
+{
+  "config": {
+    "name": "Short Straddle NIFTY Jan-Mar 2024",
+    "instrument": "NIFTY",
+    "startDate": "2024-01-01",
+    "endDate": "2024-03-31",
+    "entryTime": "09:30",
+    "exitTime": "15:15",
+    "capital": 500000,
+    "lotSize": 50,
+    "legs": [
+      {
+        "id": "leg-1",
+        "action": "SELL",
+        "optionType": "CE",
+        "strikeSelection": { "type": "atm_offset", "offset": 0 },
+        "expirySelection": { "type": "weekly", "weekOffset": 0 },
+        "lots": 1
+      },
+      {
+        "id": "leg-2",
+        "action": "SELL",
+        "optionType": "PE",
+        "strikeSelection": { "type": "atm_offset", "offset": 0 },
+        "expirySelection": { "type": "weekly", "weekOffset": 0 },
+        "lots": 1
+      }
+    ],
+    "conditions": {},
+    "riskRules": {
+      "stopLossPct": 50,
+      "targetPct": 30,
+      "maxDailyLossPct": 3
+    }
+  },
+  "priority": "normal"
+}
+
+### Create backtest — Iron Condor with condition-based entry
+POST {{baseUrl}}/api/backtests
+{{contentType}}
+
+{
+  "config": {
+    "name": "Iron Condor BANKNIFTY — VIX filter + IV entry",
+    "instrument": "BANKNIFTY",
+    "startDate": "2024-01-01",
+    "endDate": "2024-06-30",
+    "entryTime": "09:30",
+    "exitTime": "15:00",
+    "capital": 1000000,
+    "lotSize": 15,
+    "legs": [
+      { "id": "l1", "action": "SELL", "optionType": "CE", "strikeSelection": { "type": "delta", "targetDelta": 0.20 }, "expirySelection": { "type": "weekly", "weekOffset": 0 }, "lots": 1 },
+      { "id": "l2", "action": "BUY",  "optionType": "CE", "strikeSelection": { "type": "delta", "targetDelta": 0.10 }, "expirySelection": { "type": "weekly", "weekOffset": 0 }, "lots": 1 },
+      { "id": "l3", "action": "SELL", "optionType": "PE", "strikeSelection": { "type": "delta", "targetDelta": -0.20 }, "expirySelection": { "type": "weekly", "weekOffset": 0 }, "lots": 1 },
+      { "id": "l4", "action": "BUY",  "optionType": "PE", "strikeSelection": { "type": "delta", "targetDelta": -0.10 }, "expirySelection": { "type": "weekly", "weekOffset": 0 }, "lots": 1 }
+    ],
+    "conditions": {
+      "entry": {
+        "id": "g1",
+        "type": "group",
+        "logic": "AND",
+        "children": [
+          {
+            "id": "c1",
+            "type": "condition",
+            "field": "vix.close",
+            "operator": "lt",
+            "rhsType": "value",
+            "rhsValue": 18
+          },
+          {
+            "id": "c2",
+            "type": "condition",
+            "field": "iv_avg",
+            "operator": "is_between",
+            "rhsType": "value",
+            "rhsFrom": 0.12,
+            "rhsTo": 0.22
+          }
+        ]
+      },
+      "stopLoss": {
+        "id": "c3",
+        "type": "condition",
+        "field": "straddle_premium",
+        "operator": "gt",
+        "rhsType": "pct_of_field",
+        "rhsField": "straddle_premium",
+        "rhsValue": 150
+      }
+    },
+    "riskRules": {
+      "stopLossPct": 100,
+      "targetPct": 50,
+      "maxDailyLossPct": 2,
+      "trailingStop": { "enabled": true, "trailPct": 25 },
+      "vixFilter": { "enabled": true, "maxVix": 20 }
+    }
+  },
+  "priority": "high"
+}
+
+### List all backtests
+GET {{baseUrl}}/api/backtests
+
+### List completed backtests for NIFTY
+GET {{baseUrl}}/api/backtests?status=completed&instrument=NIFTY&page=1&pageSize=10
+
+### Poll job status
+GET {{baseUrl}}/api/backtests/{{jobId}}
+
+### Get result only
+GET {{baseUrl}}/api/backtests/{{jobId}}/result
+
+### Get paginated trade log
+GET {{baseUrl}}/api/backtests/{{jobId}}/trades?page=1&pageSize=50
+
+### Trade log — wins only
+GET {{baseUrl}}/api/backtests/{{jobId}}/trades?status=WIN&page=1&pageSize=50
+
+### Queue stats
+GET {{baseUrl}}/api/backtests/queue
+
+### Cancel / delete job
+DELETE {{baseUrl}}/api/backtests/{{jobId}}
+
+
+# ════════════════════════════════════════════════════════════
+# SIMULATOR
+# ════════════════════════════════════════════════════════════
+
+### Create simulator session
+POST {{baseUrl}}/api/simulator/sessions
+{{contentType}}
+
+{
+  "instrument": "NIFTY",
+  "startCandle": "2024-01-01T09:16:00",
+  "initialCapital": 500000
+}
+
+### Get session state
+GET {{baseUrl}}/api/simulator/sessions/{{sessionId}}
+
+### Market snapshot at current candle
+GET {{baseUrl}}/api/simulator/sessions/{{sessionId}}/market
+
+### Full candle data + position PnL
+GET {{baseUrl}}/api/simulator/sessions/{{sessionId}}/candle
+
+### Advance 1 candle
+POST {{baseUrl}}/api/simulator/sessions/{{sessionId}}/advance
+{{contentType}}
+
+{ "steps": 1 }
+
+### Advance 5 candles
+POST {{baseUrl}}/api/simulator/sessions/{{sessionId}}/advance
+{{contentType}}
+
+{ "steps": 5 }
+
+### Jump to specific datetime
+POST {{baseUrl}}/api/simulator/sessions/{{sessionId}}/jump
+{{contentType}}
+
+{ "candleDatetime": "2024-01-01T10:30:00" }
+
+### Open a position — sell ATM call
+POST {{baseUrl}}/api/simulator/sessions/{{sessionId}}/positions
+{{contentType}}
+
+{
+  "expiry": "2024-01-04",
+  "strike": 21700,
+  "optionType": "CE",
+  "action": "SELL",
+  "lots": 1,
+  "lotSize": 50
+}
+
+### Open a position — sell ATM put
+POST {{baseUrl}}/api/simulator/sessions/{{sessionId}}/positions
+{{contentType}}
+
+{
+  "expiry": "2024-01-04",
+  "strike": 21700,
+  "optionType": "PE",
+  "action": "SELL",
+  "lots": 1,
+  "lotSize": 50
+}
+
+### Close a position
+DELETE {{baseUrl}}/api/simulator/sessions/{{sessionId}}/positions/{{positionId}}
+{{contentType}}
+
+{}
+
+### Partial close (2 lots of 5)
+DELETE {{baseUrl}}/api/simulator/sessions/{{sessionId}}/positions/{{positionId}}
+{{contentType}}
+
+{ "lots": 2 }
+
+### Available days for simulator calendar
+GET {{baseUrl}}/api/simulator/available-days?instrument=NIFTY&year=2024
+
+### Delete session
+DELETE {{baseUrl}}/api/simulator/sessions/{{sessionId}}
