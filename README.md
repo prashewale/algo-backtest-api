@@ -77,27 +77,33 @@ The engine automatically routes to the right collection by extracting the year f
 ## Quick Start
 
 ### 1. Install dependencies
+
 ```bash
 npm install
 ```
 
 ### 2. Configure environment
+
 ```bash
 cp .env.example .env
 # Edit MONGODB_URI, REDIS_HOST, etc.
 ```
 
 ### 3. Start with Docker (recommended)
+
 ```bash
 npm run docker:up
 ```
+
 Services:
-- API:         http://localhost:3000
-- Bull Board:  http://localhost:3001  (queue dashboard)
-- MongoDB:     localhost:27017
-- Redis:       localhost:6379
+
+- API: http://localhost:3000
+- Bull Board: http://localhost:3001 (queue dashboard)
+- MongoDB: localhost:27017
+- Redis: localhost:6379
 
 ### 4. Start in development
+
 ```bash
 # Terminal 1 — API server
 npm run dev
@@ -107,58 +113,72 @@ npm run dev:worker
 ```
 
 ### 5. Create indexes (first time after loading data)
+
 ```bash
 npm run indexes
 ```
 
 ---
 
+# Start everything (API + Worker + MongoDB + Redis + Bull Board)
+
+npm run docker:dev
+
+# Or just what you need:
+
+npm run docker:dev:api # API + dependencies only
+npm run docker:dev:worker # Worker + dependencies only
+
+# Force rebuild of the dev image (after adding a new npm package)
+
+npm run docker:dev:build
+
 ## API Reference
 
 ### Backtest Jobs
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST`   | `/api/backtests` | Create & queue a backtest |
-| `GET`    | `/api/backtests` | List jobs (paginated) |
-| `GET`    | `/api/backtests/:jobId` | Job status + result |
+| Method   | Path                           | Description                  |
+| -------- | ------------------------------ | ---------------------------- |
+| `POST`   | `/api/backtests`               | Create & queue a backtest    |
+| `GET`    | `/api/backtests`               | List jobs (paginated)        |
+| `GET`    | `/api/backtests/:jobId`        | Job status + result          |
 | `GET`    | `/api/backtests/:jobId/result` | Result only (when completed) |
-| `GET`    | `/api/backtests/:jobId/trades` | Paginated trade log |
-| `DELETE` | `/api/backtests/:jobId` | Cancel or delete |
-| `GET`    | `/api/backtests/queue` | Bull queue stats |
+| `GET`    | `/api/backtests/:jobId/trades` | Paginated trade log          |
+| `DELETE` | `/api/backtests/:jobId`        | Cancel or delete             |
+| `GET`    | `/api/backtests/queue`         | Bull queue stats             |
 
 ### Simulator
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST`   | `/api/simulator/sessions` | Start new session |
-| `GET`    | `/api/simulator/sessions/:id` | Session state |
-| `GET`    | `/api/simulator/sessions/:id/market` | Market snapshot at current candle |
-| `GET`    | `/api/simulator/sessions/:id/candle` | Full candle + live P&L |
-| `POST`   | `/api/simulator/sessions/:id/advance` | Step forward N candles |
-| `POST`   | `/api/simulator/sessions/:id/jump` | Jump to datetime |
-| `POST`   | `/api/simulator/sessions/:id/positions` | Open position |
-| `DELETE` | `/api/simulator/sessions/:id/positions/:posId` | Close position |
+| Method   | Path                                           | Description                       |
+| -------- | ---------------------------------------------- | --------------------------------- |
+| `POST`   | `/api/simulator/sessions`                      | Start new session                 |
+| `GET`    | `/api/simulator/sessions/:id`                  | Session state                     |
+| `GET`    | `/api/simulator/sessions/:id/market`           | Market snapshot at current candle |
+| `GET`    | `/api/simulator/sessions/:id/candle`           | Full candle + live P&L            |
+| `POST`   | `/api/simulator/sessions/:id/advance`          | Step forward N candles            |
+| `POST`   | `/api/simulator/sessions/:id/jump`             | Jump to datetime                  |
+| `POST`   | `/api/simulator/sessions/:id/positions`        | Open position                     |
+| `DELETE` | `/api/simulator/sessions/:id/positions/:posId` | Close position                    |
 
 ### Market Data
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET` | `/api/market/candle` | Single candle |
-| `GET` | `/api/market/chain` | Option chain at a candle |
-| `GET` | `/api/market/candles` | Batch candles (max 31 days) |
-| `GET` | `/api/market/expiries` | Expiry dates on a date |
-| `GET` | `/api/market/available-days` | Trading calendar |
-| `GET` | `/api/market/stats` | Collection stats |
+| Method | Path                         | Description                 |
+| ------ | ---------------------------- | --------------------------- |
+| `GET`  | `/api/market/candle`         | Single candle               |
+| `GET`  | `/api/market/chain`          | Option chain at a candle    |
+| `GET`  | `/api/market/candles`        | Batch candles (max 31 days) |
+| `GET`  | `/api/market/expiries`       | Expiry dates on a date      |
+| `GET`  | `/api/market/available-days` | Trading calendar            |
+| `GET`  | `/api/market/stats`          | Collection stats            |
 
 ### Strategy
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `GET`  | `/api/strategy/templates` | List all 10 templates |
-| `GET`  | `/api/strategy/templates/:key` | Template detail |
-| `POST` | `/api/strategy/from-template` | Build config from template |
-| `POST` | `/api/strategy/calculate-margin` | SPAN + Exposure margin |
+| Method | Path                             | Description                |
+| ------ | -------------------------------- | -------------------------- |
+| `GET`  | `/api/strategy/templates`        | List all 10 templates      |
+| `GET`  | `/api/strategy/templates/:key`   | Template detail            |
+| `POST` | `/api/strategy/from-template`    | Build config from template |
+| `POST` | `/api/strategy/calculate-margin` | SPAN + Exposure margin     |
 
 ---
 
