@@ -1,0 +1,168 @@
+# Development compose — source mounted as volume, ts-node-dev hot reload,
+# Node inspector on separate ports for API and Worker.
+#
+# Usage:
+#   docker compose -f docker-compose.dev.yml up
+#   docker compose -f docker-compose.dev.yml up api        # API only
+#   docker compose -f docker-compose.dev.yml up worker     # Worker only
+#
+# Attach a debugger:
+#   API:    ws://localhost:9229
+#   Worker: ws://localhost:9230
+#
+# Or use the VS Code launch configs in .vscode/launch.json
+
+services:
+  # ── MongoDB ─────────────────────────────────────────────────────────────────
+  mongo:
+    image: mongo:7.0
+    container_name: algo_mongo_dev
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data_dev:/data/db
+      - ./scripts/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+    environment:
+      MONGO_INITDB_DATABASE: algo_backtest
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: none
+
+  # ── Redis ───────────────────────────────────────────────────────────────────
+  redis:
+    image: redis:7.2-alpine
+    container_name: algo_redis_dev
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data_dev:/data
+    command: redis-server --appendonly yes --maxmemory 256mb --maxmemory-policy allkeys-lru
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    logging:
+      driver: none
+
+  # ── API Server (debug) ──────────────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development # uses the 'development' stage — no build step
+    image: algo-backtest-api:dev
+    container_name: algo_api_dev
+    restart: unless-stopped
+
+    # Mount source + config as volumes so changes are reflected without rebuild
+    volumes:
+      - ./src:/app/src:ro # TypeScript source (read-only inside container)
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - ./scripts:/app/scripts:ro
+      - logs_dev:/app/logs
+
+    ports:
+      - "3000:3000" # HTTP API
+      - "9229:9229" # Node inspector (API)
+
+    # ts-node-dev with --inspect for live-reload + debugger attachment
+    command: >
+      npx ts-node-dev
+        --respawn
+        --notify
+        --no-deps
+        --transpile-only
+        --inspect=0.0.0.0:9229
+        src/index.ts
+
+    environment:
+      NODE_ENV: development
+      PORT: 3000
+      MONGODB_URI: mongodb://mongo:27017/algo_backtest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BACKTEST_WORKER_CONCURRENCY: 0 # API never processes jobs in dev either
+      LOG_LEVEL: debug
+      BULL_BOARD: "1" # always show /admin/queues in dev
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    healthcheck:
+      test: ["CMD", "curl", "-sf", "http://localhost:3000/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 5
+      start_period: 30s # give ts-node-dev time to compile on first start
+
+  # ── Background Worker (debug) ───────────────────────────────────────────────
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: development
+    image: algo-backtest-api:dev # reuse the same dev image
+    container_name: algo_worker_dev
+    restart: unless-stopped
+
+    volumes:
+      - ./src:/app/src:ro
+      - ./tsconfig.json:/app/tsconfig.json:ro
+      - logs_dev:/app/logs
+
+    ports:
+      - "9230:9230" # Node inspector (Worker) — separate port
+
+    # Worker uses a different inspector port so both can be open simultaneously
+    command: >
+      npx ts-node-dev
+        --respawn
+        --notify
+        --no-deps
+        --transpile-only
+        --inspect=0.0.0.0:9230
+        src/worker.ts
+
+    environment:
+      NODE_ENV: development
+      MONGODB_URI: mongodb://mongo:27017/algo_backtest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      BACKTEST_WORKER_CONCURRENCY: 2
+      LOG_LEVEL: debug
+
+    depends_on:
+      mongo:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+  # ── Bull Board ──────────────────────────────────────────────────────────────
+  bull-board:
+    image: deadly0/bull-board:latest
+    container_name: algo_bull_board_dev
+    restart: unless-stopped
+    ports:
+      - "3001:3000"
+    environment:
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      QUEUE_PREFIX: "bull"
+    depends_on:
+      redis:
+        condition: service_healthy
+
+volumes:
+  mongo_data_dev:
+  redis_data_dev:
+  logs_dev:

@@ -1,0 +1,136 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+
+    // ── Attach to API running in Docker ──────────────────────────────────────
+    {
+      "name": "Docker: Attach to API",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/app",
+      "protocol": "inspector",
+      "restart": true,           // re-attach when ts-node-dev restarts
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/src/**",
+        "!**/node_modules/**"
+      ]
+    },
+
+    // ── Attach to Worker running in Docker ───────────────────────────────────
+    {
+      "name": "Docker: Attach to Worker",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/app",
+      "protocol": "inspector",
+      "restart": true,
+      "sourceMaps": true,
+      "outFiles": ["${workspaceFolder}/dist/**/*.js"],
+      "skipFiles": [
+        "<node_internals>/**",
+        "**/node_modules/**"
+      ],
+      "resolveSourceMapLocations": [
+        "${workspaceFolder}/src/**",
+        "!**/node_modules/**"
+      ]
+    },
+
+    // ── Attach to both simultaneously (compound) ─────────────────────────────
+    // Use "Docker: Debug All" in the Run & Debug panel to attach both at once
+    {
+      "name": "Docker: Attach to API (once)",
+      "type": "node",
+      "request": "attach",
+      "port": 9229,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/app",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+    {
+      "name": "Docker: Attach to Worker (once)",
+      "type": "node",
+      "request": "attach",
+      "port": 9230,
+      "address": "localhost",
+      "localRoot": "${workspaceFolder}",
+      "remoteRoot": "/app",
+      "sourceMaps": true,
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+
+    // ── Run API locally without Docker ───────────────────────────────────────
+    {
+      "name": "Local: Run API",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "ts-node-dev",
+        "--respawn",
+        "--transpile-only",
+        "--inspect=9229",
+        "src/index.ts"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "envFile": "${workspaceFolder}/.env",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    },
+
+    // ── Run Worker locally without Docker ────────────────────────────────────
+    {
+      "name": "Local: Run Worker",
+      "type": "node",
+      "request": "launch",
+      "runtimeExecutable": "npx",
+      "runtimeArgs": [
+        "ts-node-dev",
+        "--respawn",
+        "--transpile-only",
+        "--inspect=9230",
+        "src/worker.ts"
+      ],
+      "cwd": "${workspaceFolder}",
+      "console": "integratedTerminal",
+      "sourceMaps": true,
+      "envFile": "${workspaceFolder}/.env",
+      "skipFiles": ["<node_internals>/**", "**/node_modules/**"]
+    }
+  ],
+
+  // ── Compound: attach to API + Worker simultaneously ──────────────────────
+  "compounds": [
+    {
+      "name": "Docker: Debug All",
+      "configurations": [
+        "Docker: Attach to API",
+        "Docker: Attach to Worker"
+      ],
+      "stopAll": true
+    },
+    {
+      "name": "Local: Run All",
+      "configurations": [
+        "Local: Run API",
+        "Local: Run Worker"
+      ],
+      "stopAll": true
+    }
+  ]
+}

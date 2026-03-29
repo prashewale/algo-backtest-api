@@ -1,0 +1,34 @@
+{
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+
+  // Show TypeScript errors inline
+  "typescript.validate.enable": true,
+
+  // Format on save with ESLint
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll.eslint": "explicit"
+  },
+
+  // Source map support — map /app/src inside Docker → local src/
+  "debug.javascript.unmapMissingSources": true,
+
+  // File exclusions
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/dist":         true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/dist":         true
+  },
+
+  // Recommended extensions
+  "extensions.recommendations": [
+    "dbaeumer.vscode-eslint",
+    "ms-vscode.vscode-typescript-next",
+    "mongodb.mongodb-vscode",
+    "ms-azuretools.vscode-docker"
+  ]
+}
